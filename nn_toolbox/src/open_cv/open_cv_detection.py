@@ -96,77 +96,8 @@ def _apply_detection(img, detection_type, face_cascades, eye_cascade, smile_casc
 # Local webcam mode — cv2.VideoCapture (no WebRTC, no lag)
 # ---------------------------------------------------------------------------
 def _run_local_webcam(detection_type, face_cascades, eye_cascade, smile_cascade):
-    st.info(
-        "🖥️ **Local mode detected** — using `cv2.VideoCapture` for high-quality, "
-        "low-latency webcam access."
-    )
-
-    FRAME_WINDOW = st.empty()
-    status_text  = st.empty()
-
-    col1, col2 = st.columns(2)
-    run  = col1.button("▶ Start Webcam", key="local_start")
-    stop = col2.button("⏹ Stop",         key="local_stop")
-
-    if "webcam_running" not in st.session_state:
-        st.session_state.webcam_running = False
-    if "webcam_det_type" not in st.session_state:
-        st.session_state.webcam_det_type = None
-
-    # If the detection type changed while the webcam was running, stop cleanly
-    if (
-        st.session_state.webcam_running
-        and st.session_state.webcam_det_type != detection_type
-    ):
-        st.session_state.webcam_running  = False
-        st.session_state.webcam_det_type = None
-        time.sleep(0.4)  # give Windows time to release the device
-
-    if run:
-        st.session_state.webcam_running  = True
-        st.session_state.webcam_det_type = detection_type
-    if stop:
-        st.session_state.webcam_running  = False
-        st.session_state.webcam_det_type = None
-
-    if st.session_state.webcam_running:
-        # Retry opening the camera a few times (handles brief release delay on Windows)
-        cap = None
-        for _ in range(4):
-            cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-            if cap.isOpened():
-                break
-            cap.release()
-            time.sleep(0.3)
-
-        if cap is None or not cap.isOpened():
-            st.error("❌ Could not open webcam. Make sure it is connected and not in use.")
-            st.session_state.webcam_running  = False
-            st.session_state.webcam_det_type = None
-            return
-
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        cap.set(cv2.CAP_PROP_FPS, 30)
-
-        try:
-            while st.session_state.webcam_running:
-                ret, frame = cap.read()
-                if not ret:
-                    status_text.warning("⚠️ Frame capture failed — retrying…")
-                    continue
-
-                frame = _apply_detection(
-                    frame, detection_type, face_cascades, eye_cascade, smile_cascade
-                )
-                FRAME_WINDOW.image(
-                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
-                    channels="RGB",
-                    width='stretch',
-                )
-        finally:
-            cap.release()
-            status_text.info("📷 Webcam stopped.")
+    st.info("📷 Webcam streaming is currently disabled in this build.")
+    return
 
 
 # ---------------------------------------------------------------------------
@@ -317,85 +248,53 @@ def opencv_detection_page():
     # WEBCAM MODE
     # ==================================================================
     if mode == "Webcam":
+        if not IS_LOCAL:
+            st.info("📷 Webcam streaming is disabled on Streamlit Cloud.")
+            return
 
-        with st.expander("🔍 Environment debug info", expanded=False):
-            st.write({
-                "IS_LOCAL":               IS_LOCAL,
-                "platform":               platform.system(),
-                "HOSTNAME":               os.environ.get("HOSTNAME", "(not set)"),
-                "IS_STREAMLIT_CLOUD":     os.environ.get("IS_STREAMLIT_CLOUD", "(not set)"),
-                "STREAMLIT_SHARING_MODE": os.environ.get("STREAMLIT_SHARING_MODE", "(not set)"),
-                "DISPLAY":                os.environ.get("DISPLAY", "(not set)"),
-            })
-            force_local = st.toggle(
-                "🖥️ Force local cv2 mode (use this if you're on your own machine but "
-                "auto-detection says cloud)",
-                value=IS_LOCAL,
-                key="force_local_webcam",
-            )
-            st.caption(
-                "When ON: uses `cv2.VideoCapture` directly — zero lag, no WebRTC.  "
-                "When OFF: uses WebRTC (needed for Streamlit Cloud)."
-            )
+        class VideoProcessor(VideoProcessorBase):
+            """WebRTC video processor — runs ensemble face detection per frame."""
 
-        use_local = st.session_state.get("force_local_webcam", IS_LOCAL)
+            def __init__(self):
+                self._det_type      = detection_type
+                self._face_cascades = face_cascades
+                self._eye_cascade   = eye_cascade
+                self._smile_cascade = smile_cascade
 
-        if use_local:
-            _run_local_webcam(detection_type, face_cascades, eye_cascade, smile_cascade)
+            def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+                img = frame.to_ndarray(format="bgr24")
+                img = _apply_detection(
+                    img,
+                    self._det_type,
+                    self._face_cascades,
+                    self._eye_cascade,
+                    self._smile_cascade,
+                )
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-        else:
-            st.warning(
-                "⚠️ **You appear to be running on Streamlit Cloud.**\n\n"
-                "Streamlit Cloud has limited CPU resources, so the webcam stream "
-                "may lag or stutter. For the best experience, we strongly recommend "
-                "**running this app on your local machine** where `cv2.VideoCapture` "
-                "is used directly for high-quality, lag-free video.\n\n"
-                "The WebRTC stream below will still work, but performance may vary."
-            )
-
-            class VideoProcessor(VideoProcessorBase):
-                """WebRTC video processor — runs ensemble face detection per frame."""
-
-                def __init__(self):
-                    self._det_type      = detection_type
-                    self._face_cascades = face_cascades
-                    self._eye_cascade   = eye_cascade
-                    self._smile_cascade = smile_cascade
-
-                def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
-                    img = frame.to_ndarray(format="bgr24")
-                    img = _apply_detection(
-                        img,
-                        self._det_type,
-                        self._face_cascades,
-                        self._eye_cascade,
-                        self._smile_cascade,
-                    )
-                    return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-            webrtc_streamer(
-                key="opencv-detection",
-                mode=WebRtcMode.SENDRECV,
-                video_processor_factory=VideoProcessor,
-                media_stream_constraints={
-                    "video": {
-                        "width":     {"ideal": 1280, "min": 640},
-                        "height":    {"ideal": 720,  "min": 480},
-                        "frameRate": {"ideal": 30,   "min": 15},
-                    },
-                    "audio": False,
+        webrtc_streamer(
+            key="opencv-detection",
+            mode=WebRtcMode.SENDRECV,
+            video_processor_factory=VideoProcessor,
+            media_stream_constraints={
+                "video": {
+                    "width":     {"ideal": 1280, "min": 640},
+                    "height":    {"ideal": 720,  "min": 480},
+                    "frameRate": {"ideal": 30,   "min": 15},
                 },
-                rtc_configuration={
-                    "iceServers": [
-                        {"urls": "stun:stun.l.google.com:19302"},
-                        {"urls": "stun:stun1.l.google.com:19302"},
-                        {"urls": "stun:stun2.l.google.com:19302"},
-                        {"urls": "stun:stun.stunprotocol.org:3478"},
-                    ],
-                    "iceCandidatePoolSize": 10,
-                },
-                async_processing=True,
-            )
+                "audio": False,
+            },
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": "stun:stun.l.google.com:19302"},
+                    {"urls": "stun:stun1.l.google.com:19302"},
+                    {"urls": "stun:stun2.l.google.com:19302"},
+                    {"urls": "stun:stun.stunprotocol.org:3478"},
+                ],
+                "iceCandidatePoolSize": 10,
+            },
+            async_processing=True,
+        )
 
     # ==================================================================
     # VIDEO UPLOAD MODE
