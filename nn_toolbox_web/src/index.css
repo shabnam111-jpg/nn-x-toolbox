@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  @apply transition-colors duration-200;
+}
+
+html {
+  @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900;
+}
+
+body {
+  @apply text-slate-100;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Glassmorphism Base */
+.glass {
+  @apply bg-white/10 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-700/30 rounded-2xl;
+}
+
+/* Gradient Text */
+.gradient-text {
+  @apply bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-500 bg-clip-text text-transparent;
+}
+
+/* Gradient Border */
+.gradient-border {
+  @apply relative p-[2px] rounded-2xl;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.5), rgba(34, 197, 232, 0.5), rgba(168, 85, 247, 0.5));
+}
+
+.gradient-border > * {
+  @apply bg-slate-950 rounded-lg p-6;
+}
+
+/* Smooth Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Scroll Bar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full hover:bg-slate-600;
+}

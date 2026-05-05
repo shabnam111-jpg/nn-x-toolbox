@@ -1,14 +1,57 @@
+# Python
 __pycache__/
-*.pyc
-.gemini/
-# .streamlit/ (removed to allow config.toml tracking)
-.streamlit/secrets.toml
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv
+.venv*
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm
+.eslintcache
 
-NeuralNetworkLab/
-tmp_mp_test.py
-NeuralNetworkLab_exclude.txt
-yolov8n.pt
-Sentiment_Analysis_RNN/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Misc
 .env
-.env.*
+.env.local
+.cache/
+*.log

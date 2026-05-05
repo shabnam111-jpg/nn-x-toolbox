@@ -1,0 +1,31 @@
+streamlit
+opencv-python
+face_recognition
+pandas
+numpy
+matplotlib
+plotly
+scikit-image
+email-validator
+python-dotenv
+cmake
+Optimizing
+
+# python app.py
+#  Enable shell integration to improve command detection
+
+# cd attendance_app && python app.py
+#  Enable shell integration to improve command detection
+
+# streamlit run app.py
+# dir
+#  Enable shell integration to improve command detection
+
+# cd attendance_app && dir
+#  Enable shell integration to improve command detection
+
+# streamlit run app.py
+# where streamlit
+#  Enable shell integration to improve command detection
+
+# C:\Users\ARSH\AppData\Local\Programs\Python\Python310\Scripts\streamlit.exe run attendance_app\app.py
