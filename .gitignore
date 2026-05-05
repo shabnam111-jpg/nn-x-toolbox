@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.gemini/
+# .streamlit/ (removed to allow config.toml tracking)
+.streamlit/secrets.toml
+
+
+NeuralNetworkLab/
+tmp_mp_test.py
+NeuralNetworkLab_exclude.txt
+yolov8n.pt
+Sentiment_Analysis_RNN/
+.env
+.env.*
