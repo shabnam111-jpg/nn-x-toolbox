@@ -96,8 +96,77 @@ def _apply_detection(img, detection_type, face_cascades, eye_cascade, smile_casc
 # Local webcam mode — cv2.VideoCapture (no WebRTC, no lag)
 # ---------------------------------------------------------------------------
 def _run_local_webcam(detection_type, face_cascades, eye_cascade, smile_cascade):
-    st.info("📷 Webcam streaming is currently disabled in this build.")
-    return
+    st.info(
+        "🖥️ **Local mode** — using `cv2.VideoCapture` for high-quality, "
+        "low-latency webcam access."
+    )
+
+    frame_window = st.empty()
+    status_text  = st.empty()
+
+    col1, col2 = st.columns(2)
+    run  = col1.button("▶ Start Webcam", key="local_start")
+    stop = col2.button("⏹ Stop",         key="local_stop")
+
+    if "webcam_running" not in st.session_state:
+        st.session_state.webcam_running = False
+    if "webcam_det_type" not in st.session_state:
+        st.session_state.webcam_det_type = None
+
+    # If the detection type changed while the webcam was running, stop cleanly
+    if (
+        st.session_state.webcam_running
+        and st.session_state.webcam_det_type != detection_type
+    ):
+        st.session_state.webcam_running  = False
+        st.session_state.webcam_det_type = None
+        time.sleep(0.4)  # give Windows time to release the device
+
+    if run:
+        st.session_state.webcam_running  = True
+        st.session_state.webcam_det_type = detection_type
+    if stop:
+        st.session_state.webcam_running  = False
+        st.session_state.webcam_det_type = None
+
+    if st.session_state.webcam_running:
+        # Retry opening the camera a few times (handles brief release delay on Windows)
+        cap = None
+        for _ in range(4):
+            cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                break
+            cap.release()
+            time.sleep(0.3)
+
+        if cap is None or not cap.isOpened():
+            st.error("❌ Could not open webcam. Make sure it is connected and not in use.")
+            st.session_state.webcam_running  = False
+            st.session_state.webcam_det_type = None
+            return
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_FPS, 30)
+
+        try:
+            while st.session_state.webcam_running:
+                ret, frame = cap.read()
+                if not ret:
+                    status_text.warning("⚠️ Frame capture failed — retrying…")
+                    continue
+
+                frame = _apply_detection(
+                    frame, detection_type, face_cascades, eye_cascade, smile_cascade
+                )
+                frame_window.image(
+                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
+                    channels="RGB",
+                    width="stretch",
+                )
+        finally:
+            cap.release()
+            status_text.info("📷 Webcam stopped.")
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +319,16 @@ def opencv_detection_page():
     if mode == "Webcam":
         if not IS_LOCAL:
             st.info("📷 Webcam streaming is disabled on Streamlit Cloud.")
+            return
+
+        use_local = st.toggle(
+            "Use local cv2 webcam (recommended)",
+            value=True,
+            key="force_local_webcam",
+        )
+
+        if use_local:
+            _run_local_webcam(detection_type, face_cascades, eye_cascade, smile_cascade)
             return
 
         class VideoProcessor(VideoProcessorBase):
